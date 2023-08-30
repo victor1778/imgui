@@ -1896,9 +1896,15 @@ void ImDrawData::DeIndexAllBuffers()
 // or if there is a difference between your window resolution and framebuffer resolution.
 void ImDrawData::ScaleClipRects(const ImVec2& fb_scale)
 {
-    for (ImDrawList* draw_list : CmdLists)
-        for (ImDrawCmd& cmd : draw_list->CmdBuffer)
-            cmd.ClipRect = ImVec4(cmd.ClipRect.x * fb_scale.x, cmd.ClipRect.y * fb_scale.y, cmd.ClipRect.z * fb_scale.x, cmd.ClipRect.w * fb_scale.y);
+    for (int i = 0; i < CmdListsCount; i++)
+    {
+        ImDrawList* cmd_list = CmdLists[i];
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+        {
+            ImDrawCmd* cmd = &cmd_list->CmdBuffer[cmd_i];
+            cmd->ClipRect = ImVec4(cmd->ClipRect.x * fb_scale.x, cmd->ClipRect.y * fb_scale.y, cmd->ClipRect.z * fb_scale.x, cmd->ClipRect.w * fb_scale.y);
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -2039,19 +2045,19 @@ ImFontAtlas::~ImFontAtlas()
 void    ImFontAtlas::ClearInputData()
 {
     IM_ASSERT(!Locked && "Cannot modify a locked ImFontAtlas between NewFrame() and EndFrame/Render()!");
-    for (ImFontConfig& font_cfg : ConfigData)
-        if (font_cfg.FontData && font_cfg.FontDataOwnedByAtlas)
+    for (int i = 0; i < ConfigData.Size; i++)
+        if (ConfigData[i].FontData && ConfigData[i].FontDataOwnedByAtlas)
         {
-            IM_FREE(font_cfg.FontData);
-            font_cfg.FontData = NULL;
+            IM_FREE(ConfigData[i].FontData);
+            ConfigData[i].FontData = NULL;
         }
 
     // When clearing this we lose access to the font name and other information used to build the font.
-    for (ImFont* font : Fonts)
-        if (font->ConfigData >= ConfigData.Data && font->ConfigData < ConfigData.Data + ConfigData.Size)
+    for (int i = 0; i < Fonts.Size; i++)
+        if (Fonts[i]->ConfigData >= ConfigData.Data && Fonts[i]->ConfigData < ConfigData.Data + ConfigData.Size)
         {
-            font->ConfigData = NULL;
-            font->ConfigDataCount = 0;
+            Fonts[i]->ConfigData = NULL;
+            Fonts[i]->ConfigDataCount = 0;
         }
     ConfigData.clear();
     CustomRects.clear();
@@ -2856,9 +2862,9 @@ void ImFontAtlasBuildFinish(ImFontAtlas* atlas)
     }
 
     // Build all fonts lookup tables
-    for (ImFont* font : atlas->Fonts)
-        if (font->DirtyLookupTables)
-            font->BuildLookupTable();
+    for (int i = 0; i < atlas->Fonts.Size; i++)
+        if (atlas->Fonts[i]->DirtyLookupTables)
+            atlas->Fonts[i]->BuildLookupTable();
 
     atlas->TexReady = true;
 }
